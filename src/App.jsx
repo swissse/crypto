@@ -1,0 +1,80 @@
+import { useDispatch } from "react-redux"
+import { useEffect, useState } from "react"
+import { useSelector } from "react-redux"
+import { fetchCryptos, fetchCryptoHistory } from "./Store/slices/cryptoSlice"
+import { Bar, Line } from "react-chartjs-2";
+import Chart from "chart.js/auto";
+
+
+
+export default function App() {
+  const dispatch = useDispatch()
+  const { cryptos, cryptoHistory, status } = useSelector(state => state.crypto)
+  const [selectedCrypto, setSelectedCrypto] = useState(null)
+
+  useEffect(() => {
+    dispatch(fetchCryptos())
+  }, [dispatch])
+
+  const handleSelect = (crypto) => {
+    setSelectedCrypto(crypto)
+    dispatch(fetchCryptoHistory(crypto.id))
+  }
+
+  const renderChart = () => {
+    if (!selectedCrypto || !cryptoHistory[selectedCrypto.id]) {
+      return <p className="text-center mt-4">Select a cryptocurrency to view its 30-day price history.</p>;
+    }
+
+    const history = cryptoHistory[selectedCrypto.id]
+    const data = {
+      labels: history.prices.map(price => new Date(price[0]).toLocaleDateString()),
+      datasets: [
+        {
+          label: `${selectedCrypto.name} Price (USD)`,
+          data: history.prices.map(price => price[1]),
+          borderColor: 'rgba(75, 192, 192, 1)',
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          borderWidth: 1,
+        },
+      ],
+    }
+
+    return (
+      <div className="p-4 w-full">
+        <h2 className="text-xl font-semibold mb-2">{selectedCrypto.name} — 30-Day Chart</h2>
+        <Line data={data} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex h-screen bg-gray-50">
+      <aside className="w-1/4 bg-white border-r overflow-y-auto p-4">
+        <h1 className="text-2xl font-bold mb-4">Crypto List</h1>
+        {status === 'loading' && <p>Loading...</p>}
+        {status === 'failed' && <p>Error loading data.</p>}
+        <ul>
+          {cryptos.map((crypto) => (
+            <li key={crypto.id}>
+              <button
+                className={`w-full text-left p-2 rounded mb-1 hover:bg-blue-100 transition ${selectedCrypto?.id === crypto.id ? 'bg-blue-200' : ''}`}
+                onClick={() => handleSelect(crypto)}
+              >
+                {crypto.name} ({crypto.symbol.toUpperCase()})
+              </button>
+            </li>
+          ))}
+        </ul>
+      </aside>
+
+      <main className="flex-1 flex items-center justify-center bg-gray-100">
+        {selectedCrypto ? (
+          renderChart()
+        ) : (
+          <p className="text-gray-500 text-lg">Select a cryptocurrency to view its chart.</p>
+        )}
+      </main>
+    </div>
+  )
+}
